@@ -1,0 +1,116 @@
+---
+title: "Airline Delay Prediction Competition Report"
+author: "Oleksii Renov"
+date: "May 25, 2016"
+output: pdf_document
+---
+
+
+## Introduction
+
+In the United States, the Federal Aviation Administration estimates that flight delays cost approx. $20 billion yearly (2010 study). Knowledge of the factors leading to specific flight delays can help Aviation authorities and Airlines in taking necessary actions to ensure smooth operations.
+
+The goal is to build a model to predict arrival delays of flights – Delay/No-Delay. 
+
+These investigations can save lots of money for travellers to don't buy tickets on delayed flights.
+
+## Variable Importance
+
+```{r echo = FALSE}
+library(data.table)
+dt <- fread("importance.csv")
+head(dt, 30)
+```
+
+
+## Modelling Report
+
+All code is available on github : https://github.com/dataminders/airline-delay-prediction.
+
+The goal was to find models wich performs differently on hold out dataset and to combine them in the best way. Basically I created 1 analogue of fm machine and 4 xgboosts with different subsets of parameters. Surprisingly I got very high weight for fm model.
+
+Another trick which helped me to to bean benchmark score (0.70) is correcting output probabilities by delay rate in exactly this months last year. It looks like the problem of delay flights is very seasonal.
+
+Some quick summary of results:
+
+Best single model result - 0.6957.
+
+Blending used precomputed values from out of sample validation data - 1.5 millions of points(4 months I guess).
+
+Public score - 0.70355
+
+Private score - 0.70257
+
+### Feature Engineering
+
+Here all list of features which I created from raw data including weather with some background why exatly this features were created. Added lots of simillar weather data for origin and destination.
+
+To reduce number of features I don't use one hot encoding of Tail num or Flight num features in all models, only some simple basic features like average delay rate on features.
+
+Here the complete table of created features and their description
+
+| Feature Name        | Description           |
+| ------------------------- |:--------------------------------------:|
+| num arrival all | Number of arrival flights planned in this day in overall airports in time blk|
+| num dep all | Number of departure flights planned in this day in overall airports in time blk   |
+| num arrival dest | Number of arrival flights planned in this day in destination ariport in time blk |
+| num arrival org | Number of arrival flights planned in this day in origin ariport in time blk |
+| ARR HOUR | Arrival hour |
+| DEP HOUR | Departure hour|
+| NUM FLIGHTS TAIL |  Number of flights in a day  by tail num |
+| same state | is local flight |
+| Holiday days | Days before/after nearest public holiday|
+| mean arr del by fl num | Average delay rate by flight number |
+| mean arr del by tail num | Average delay rate by tail num |
+| mean arr del by dest num | Average delay rate by destination |
+| mean arr del by orig num | Average delay rate by origin |
+| mean dest orig delay | Average delay rate by origin:destination |
+| is fl num delay | is delay ever for flight num |
+| is tail num delay | is delay ever for tail num |
+| is dest orig delay | is delay ever for origin:destination |
+
+### Replacing Missing Values
+
+Missing Values were replaced as zeros (or -999) or most probable category for factor variables. (especially for weather data)
+
+Here is an example:
+
+```{r eval=FALSE}
+weather[is.na(precipitation_in), precipitation_in := 0]
+weather[is.na(events), events := "NoAny"]
+weather[is.na(temperature_f), temperature_f := mean(weather[['temperature_f']], na.rm = TRUE)]
+weather[is.na(dew_point_f), dew_point_f := -999]
+weather[is.na(humidity), humidity := -999]
+weather[is.na(sea_level_pressure_in), sea_level_pressure_in := -999]
+weather[is.na(visibility_mph), visibility_mph := -999]
+weather[is.na(gust_speed_mph), gust_speed_mph := 0]
+weather[is.na(wind_dir_degrees), wind_dir_degrees := 0]
+weather[is.na(wind_direction), wind_direction := 'Calm']
+weather[is.na(wind_speed_mph), wind_speed_mph := 'Calm']
+```
+
+### Applicability of model for future flights
+
+Due to finding some really interesting results of combining models it can help.
+
+So my second important model in the blend is linear model. It scores only 0.667 on public leaderboard, but contributes so good for final ensemble. Combination of few different xgboosts showed that different subset of features with different parameters play the role.
+
+But even this strong combination of models can't catch some time trends. And hopefully time series analysis can also help, exspecially some SARIMA models for predicting priors.
+
+One thing that dissapointed me a lot is that simple ordered counts of events by flight number, tail number of something else, simply don't work. They showed that there is no any linear trend between delay rate and flight number(or tail num), it just gives me more confidence that all this events have very periodic nature.
+
+## Conclusion
+
+Thank you for this competition. That was great to learn about so important problem.
+
+
+
+
+
+
+
+
+
+
+
+

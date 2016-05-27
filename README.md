@@ -27,7 +27,7 @@ Rscript blend.R
 
 # Summary
 
-Best single model result - 0.6967.
+Best single model result - 0.6957.
 
 Blending used precomputed values from out of sample validation data - last three month of train data.
 
